@@ -110,7 +110,7 @@ class DashboardStatsController extends BaseController
                 fg.month,
                 fg.year,
                 fg.due_date,
-                CAST(fg.amount AS DECIMAL(10,2)) AS generated,
+                CAST(fg.amount AS DECIMAL(10,2)) AS generated_amount,
                 students.firstname,
                 students.lastname,
                 (

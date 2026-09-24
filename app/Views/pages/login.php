@@ -63,8 +63,6 @@
                 </div>
                 <button type="submit" class="btn btn-main rounded-pill w-100">Sign In</button>
 
-                <div id="response" style="margin-top:20px; color:blue;"></div>
-
                 <div class="divider my-32 position-relative text-center">
                     <span class="divider__text text-gray-600 text-13 fw-medium px-26 bg-white"></span>
                 </div>

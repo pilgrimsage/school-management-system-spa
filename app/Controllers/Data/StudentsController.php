@@ -201,7 +201,11 @@ class StudentsController extends BaseController
             }
         }
 
-        $builder->groupBy('fg.id');
+        // Every non-aggregated column referenced in SELECT above has to be
+        // in GROUP BY under sql_mode=only_full_group_by (the MySQL 8
+        // default) — fg.id alone isn't enough, even though each of these
+        // is a single value per fg.id given the join conditions.
+        $builder->groupBy('fg.id, fg.month, fg.year, fg.amount, fg.due_date, fg.created_at, fd.discount_amount, st.discount');
 
         $builder->orderBy('fg.year', 'DESC');
         $builder->orderBy('fg.month', 'DESC');
@@ -227,7 +231,9 @@ class StudentsController extends BaseController
         ->join('fees_discount fd', 'fd.generated_fee = fg.id', 'left')
         ->join('students st', 'st.id = fg.student_id', 'left')
         ->where('fg.student_id', $studentId)
-        ->groupBy('fg.id')
+        // See getStudentFees() above: sql_mode=only_full_group_by needs
+        // every selected non-aggregated column listed here, not just fg.id.
+        ->groupBy('fg.id, fg.due_date, fg.amount, fd.discount_amount, st.discount')
         ->get()
         ->getResultArray();
 
@@ -413,7 +419,7 @@ class StudentsController extends BaseController
             ->where('a.related_class', $student['related_class'])
             ->where('a.related_section', $student['related_section'])
             ->where('a.deleted_at', null)
-            ->groupBy('sub.id')
+            ->groupBy('sub.id, sub.subject_name')
             ->orderBy('sub.subject_name', 'ASC')
             ->get()
             ->getResultArray();

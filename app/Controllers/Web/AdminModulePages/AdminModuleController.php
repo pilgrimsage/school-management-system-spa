@@ -139,7 +139,7 @@ class AdminModuleController extends BaseController
     {
         return view('templates/sidebar')
             .  view('templates/topbar')
-            .  view('pages/admin-module-pages/subject-allocation')            
+            .  view('pages/admin-module-pages/payment-gateways')
         ;
     }
 
