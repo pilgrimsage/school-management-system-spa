@@ -8,7 +8,7 @@
     </div>
     <div class="auth-right py-40 px-24 flex-center flex-column">
         <div class="auth-right__inner mx-auto w-100">
-            <a href="index.html" class="auth-right__logo">
+            <a href="<?= base_url() ?>" class="auth-right__logo">
                 <img src="assets/images/logo/logo.png" alt="">
             </a>
             <h2 class="mb-8">Forgot Password?</h2>

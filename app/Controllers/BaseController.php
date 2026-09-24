@@ -34,6 +34,26 @@ abstract class BaseController extends Controller
         $this->adminRoleManagementController = new AdminRoleManagementController();
 
         /* -----------------------------------------
+           Make the logged-in user available to every view (topbar
+           profile name/email, etc.) without leaking password/token.
+        ----------------------------------------- */
+        if (isset($request->user)) {
+            $record       = $request->user->record;
+            $isEmployee   = $request->user->loginType === 'employee';
+            $uploadFolder = $isEmployee ? 'employees' : 'students';
+
+            service('renderer')->setVar('currentUser', [
+                'type'          => $request->user->loginType,
+                'id'            => $request->user->id,
+                'name'          => trim(($record['firstname'] ?? '') . ' ' . ($record['lastname'] ?? '')),
+                'email'         => $record['email1'] ?? ($record['student_email'] ?? ''),
+                'profile_image' => !empty($record['profile_image'])
+                    ? base_url('uploads/' . $uploadFolder . '/' . $record['profile_image'])
+                    : base_url('assets/images/thumbs/user-img.png'),
+            ]);
+        }
+
+        /* -----------------------------------------
            Inject role permissions for EMPLOYEES only
         ----------------------------------------- */
         if (isset($request->user)) {

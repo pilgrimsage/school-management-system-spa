@@ -293,8 +293,10 @@ class EmployeeManagementController extends BaseController
         return ['error' => 'Failed to update employee details'];
     }
 
-    public function uploadEmployeeImage($employeeId, $imageType = 'profile', $request)
+    public function uploadEmployeeImage($employeeId, $imageType = 'profile', $request = null)
     {
+        $request ??= service('request');
+
         $employee = $this->employeeModel->find($employeeId);
         if (!$employee) {
             return ['error' => 'Employee not found'];

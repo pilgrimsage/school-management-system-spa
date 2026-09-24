@@ -8,7 +8,7 @@
     </div>
     <div class="auth-right py-40 px-24 flex-center flex-column">
         <div class="auth-right__inner mx-auto w-100">
-            <a href="index.html" class="auth-right__logo max-w-100 mx-auto mb-15 d-block">
+            <a href="<?= base_url() ?>" class="auth-right__logo max-w-100 mx-auto mb-15 d-block">
                 <img src="<?=base_url()?>assets/images/logo/logo-sm.png" alt="">
             </a>
             <h2 class="text-center mb-8">Welcome to Back! &#128075;</h2>
