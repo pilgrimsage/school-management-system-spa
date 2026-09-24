@@ -1,68 +1,102 @@
-# CodeIgniter 4 Application Starter
+# School Management System (SPA)
 
-## What is CodeIgniter?
+A CodeIgniter 4 school management system (admissions, attendance, fees,
+exams, employee/HR, transport, academics) with a server-rendered login page
+and an AJAX-driven "SPA" shell for the logged-in employee and student
+portals.
 
-CodeIgniter is a PHP full-stack web framework that is light, fast, flexible and secure.
-More information can be found at the [official site](https://codeigniter.com).
+## Tech stack
 
-This repository holds a composer-installable app starter.
-It has been built from the
-[development repository](https://github.com/codeigniter4/CodeIgniter4).
+- **Backend:** PHP / CodeIgniter 4, MySQL (MariaDB in production)
+- **Frontend:** jQuery + a hand-rolled AJAX router (no framework — see below)
+- **Auth:** JWT (`app/Filters/JWTAuthFilter.php`), applied globally to every
+  route except an explicit skip-list (login, pre-login, forgot-password,
+  privacy-policy, public fee receipts)
 
-More information about the plans for version 4 can be found in [CodeIgniter 4](https://forum.codeigniter.com/forumdisplay.php?fid=28) on the forums.
+## ⚠️ Known weak point: the custom JS router
 
-You can read the [user guide](https://codeigniter.com/user_guide/)
-corresponding to the latest version of the framework.
+There is **no client-side routing library** in this project. Navigation
+inside the logged-in portals is a hand-rolled AJAX router, implemented as
+inline `<script>` blocks duplicated almost 1:1 in two view files:
 
-## Installation & updates
+- `app/Views/portal/post-login-employee.php`
+- `app/Views/portal/post-login-student.php`
 
-`composer create-project codeigniter4/appstarter` then `composer update` whenever
-there is a new release of the framework.
+Each file defines its own `navigateTo()`, `AppState`, `pluginConfigs`,
+`window.onpopstate`, and Capacitor (mobile) back-button handling — copy-pasted
+rather than shared. **This is the most fragile part of the app and the most
+common source of "the page didn't load" / "back button doesn't work" /
+"double navigation" bugs.** If you're debugging a navigation issue, start
+here, not in the PHP controllers.
 
-When updating, check the release notes to see if there are any changes you might need to apply
-to your `app` folder. The affected files can be copied or merged from
-`vendor/codeigniter4/framework/app`.
+Known failure modes that have already bitten this router (fixed so far, but
+the underlying duplication means new copies of the same bug can still creep
+into one file and not the other):
+
+- Browser back button doing nothing on the very first press (the initial
+  page load never wrote a `history.pushState`/`replaceState` entry, so the
+  first `popstate` had no `event.state` to act on).
+- Navigation clicks silently dropped when they happened while another
+  request was still in flight (the queued-navigation dequeue code existed
+  but was commented out).
+- The mobile hardware back button firing twice (Capacitor's `backButton`
+  listener was registered in two separate `DOMContentLoaded` blocks in the
+  same file).
+
+**If you're picking up router work next:** the real fix is to extract the
+router (`navigateTo`, `AppState`, plugin lifecycle, history handling) into a
+single shared JS asset under `public/assets/js/` that both portal shells
+include, instead of maintaining two copies. Until that refactor happens,
+any router fix must be applied to **both** `post-login-employee.php` and
+`post-login-student.php`, or the two portals will drift further apart.
 
 ## Setup
 
-Copy `env` to `.env` and tailor for your app, specifically the baseURL
-and any database settings.
+Copy `env` to `.env` and set at minimum:
 
-## Important Change with index.php
+- `app.baseURL`
+- `database.default.*` (hostname, database, username, password)
+- `JWT_SECRET` (required — `JWTAuthFilter` decodes every authenticated
+  request with this; there is no fallback)
 
-`index.php` is no longer in the root of the project! It has been moved inside the *public* folder,
-for better security and separation of components.
+`index.php` lives in `public/`, not the project root — point your web
+server's document root at `public/`.
 
-This means that you should configure your web server to "point" to your project's *public* folder, and
-not to the project root. A better practice would be to configure a virtual host to point there. A poor practice would be to point your web server to the project root and expect to enter *public/...*, as the rest of your logic and the
-framework are exposed.
+### Database / migrations
 
-**Please** read the user guide for a better explanation of how CI4 works!
+`app/Database/Migrations` previously had no migrations at all even though
+the production database has 39 tables — the schema only existed in the
+live MySQL instance. A baseline migration
+(`2026-09-24-000000_InitialSchema.php`) now reverse-engineers that schema
+from a production dump, so a fresh environment can be provisioned with:
 
-## Repository Management
+```
+php spark migrate
+```
 
-We use GitHub issues, in our main repository, to track **BUGS** and to track approved **DEVELOPMENT** work packages.
-We use our [forum](http://forum.codeigniter.com) to provide SUPPORT and to discuss
-FEATURE REQUESTS.
+Add any further schema changes as new migrations on top of that baseline —
+don't edit it in place.
 
-This repository is a "distribution" one, built by our release preparation script.
-Problems with it can be raised on our forum, or as issues in the main repository.
+### Auth notes
 
-## Server Requirements
+- Passwords are hashed with `password_hash()` on write. Older rows created
+  before hashing was introduced are still plaintext; login verifies against
+  either format and silently upgrades a plaintext row to a hash on
+  successful login (see `BaseController::verifyAndUpgradePassword()`).
+- Every route is behind the global `jwt` filter except the explicit
+  skip-list in `JWTAuthFilter`. If you add a new route that should be
+  public, add its first URI segment there rather than disabling the filter.
 
-PHP version 8.1 or higher is required, with the following extensions installed:
+## Server requirements
 
-- [intl](http://php.net/manual/en/intl.requirements.php)
-- [mbstring](http://php.net/manual/en/mbstring.installation.php)
+PHP 8.1+, with the `intl`, `mbstring`, `json`, and `mysqlnd` extensions
+enabled.
 
-> [!WARNING]
-> - The end of life date for PHP 7.4 was November 28, 2022.
-> - The end of life date for PHP 8.0 was November 26, 2023.
-> - If you are still using PHP 7.4 or 8.0, you should upgrade immediately.
-> - The end of life date for PHP 8.1 will be December 31, 2025.
+## Repository structure
 
-Additionally, make sure that the following extensions are enabled in your PHP:
-
-- json (enabled by default - don't turn it off)
-- [mysqlnd](http://php.net/manual/en/mysqlnd.install.php) if you plan to use MySQL
-- [libcurl](http://php.net/manual/en/curl.requirements.php) if you plan to use the HTTP\CURLRequest library
+- `app/Controllers/Web/*ModulePages` — page controllers that render the
+  fragments the AJAX router swaps into `#app`
+- `app/Controllers/Data` — business logic / data access, called from the
+  Web controllers
+- `app/Views/portal` — the two SPA shells described above
+- `app/Views/pages` — the individual page fragments loaded into the shells
