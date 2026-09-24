@@ -742,9 +742,20 @@
             chart.render();
         }
 
+        // Pages that need a chart backed by real data (e.g. the admin
+        // dashboard) set window.dashboardData.charts[chartId] before this
+        // plugin runs. Falls back to placeholder demo data when a page
+        // doesn't provide one, so this stays safe for any other route
+        // reusing these chart ids without real data wired up.
+        function getChartOverride(chartId) {
+            return (window.dashboardData && window.dashboardData.charts && window.dashboardData.charts[chartId]) || null;
+        }
+
         function createLineChart(chartId, chartColor) {
+            const override = getChartOverride(chartId);
+
             var options = {
-                series: [
+                series: override ? override.series : [
                     { name: 'Study', data: [8, 15, 9, 20, 10, 33, 13, 22, 8, 17, 10, 15] },
                     { name: 'Test', data: [8, 24, 18, 40, 18, 48, 22, 38, 18, 30, 20, 28] }
                 ],
@@ -752,7 +763,10 @@
                 colors: ['#3D7FF9', chartColor],
                 dataLabels: { enabled: false },
                 stroke: { curve: 'smooth', width: 1, colors: ["#3D7FF9", chartColor] },
-                xaxis: { categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] }
+                xaxis: {
+                    categories: override ? override.categories
+                        : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+                }
             };
 
             var chart = new ApexCharts(document.querySelector(`#${chartId}`), options);
@@ -760,20 +774,33 @@
         }
 
         function createRadialChart(chartId) {
+            chartId = chartId || 'radialMultipleBar';
+            const override = getChartOverride(chartId);
+
+            const series = override ? override.series : [100, 60, 25];
+            const labels = override ? override.labels : ['Completed', 'In Progress', 'Not Started'];
+
             var options = {
-                series: [100, 60, 25],
+                series: series,
                 chart: { height: 172, type: 'radialBar' },
                 colors: ['#3D7FF9', '#27CFA7', '#020203'],
                 plotOptions: {
                     radialBar: {
                         hollow: { size: '30%' },
-                        dataLabels: { total: { show: true, formatter: function () { return '82%' } } }
+                        dataLabels: {
+                            total: {
+                                show: true,
+                                formatter: function () {
+                                    return override ? (series[0] || 0) + '%' : '82%';
+                                }
+                            }
+                        }
                     }
                 },
-                labels: ['Completed', 'In Progress', 'Not Started']
+                labels: labels
             };
 
-            var chart = new ApexCharts(document.querySelector(`#${chartId || 'radialMultipleBar'}`), options);
+            var chart = new ApexCharts(document.querySelector(`#${chartId}`), options);
             chart.render();
         }
 

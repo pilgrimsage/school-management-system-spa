@@ -4,21 +4,24 @@ namespace App\Controllers\Web;
 
 use App\Controllers\BaseController;
 use App\Controllers\Data\SISModulePages\SISController;
+use App\Controllers\Data\AdminModulePages\DashboardStatsController;
 
 class DashboardController extends BaseController
 {
     protected $sisController;
+    protected $dashboardStatsController;
 
     public function __construct()
     {
-        $this->sisController = new SISController();
+        $this->sisController            = new SISController();
+        $this->dashboardStatsController = new DashboardStatsController();
     }
 
     public function dashboard(): string
     {
         return view('templates/sidebar')
             .  view('templates/topbar')
-            .  view('pages/admin-module-pages/dashboard');
+            .  view('pages/admin-module-pages/dashboard', $this->dashboardStatsController->getStats());
     }
     
     public function login(): string
