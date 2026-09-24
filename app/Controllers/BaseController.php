@@ -67,4 +67,35 @@ abstract class BaseController extends Controller
     {
         return $this->adminRoleManagementController->getOne($roleId);
     }
+
+    /**
+     * Verify a login password against a stored value that may be either a
+     * password_hash() hash (current format) or plaintext (legacy rows
+     * created before hashing was introduced). On a successful legacy
+     * plaintext match, the stored value is transparently upgraded to a hash.
+     */
+    protected function verifyAndUpgradePassword(string $plainPassword, array $userRecord, $model): bool
+    {
+        $stored = $userRecord['password'] ?? '';
+
+        if ($stored === '') {
+            return false;
+        }
+
+        $info = password_get_info($stored);
+        if ($info['algo'] !== null) {
+            return password_verify($plainPassword, $stored);
+        }
+
+        // Legacy plaintext row — compare directly, then upgrade to a hash.
+        if (!hash_equals($stored, $plainPassword)) {
+            return false;
+        }
+
+        $model->update($userRecord['id'], [
+            'password' => password_hash($plainPassword, PASSWORD_DEFAULT),
+        ]);
+
+        return true;
+    }
 }

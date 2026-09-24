@@ -33,10 +33,9 @@ class StudentsController extends BaseController
                 ->where('student_email', $studentEmail)
                 ->orWhere('student_contact_no', $studentEmail)
             ->groupEnd()
-            ->where('password', $studentPassword)
             ->first();
 
-        if (!$studentDetails) {
+        if (!$studentDetails || !$this->verifyAndUpgradePassword($studentPassword, $studentDetails, $this->studentsModel)) {
             return json_encode([
                 'status'  => 0,
                 'message' => 'Account Not Found',

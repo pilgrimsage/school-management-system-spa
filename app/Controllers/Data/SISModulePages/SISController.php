@@ -638,7 +638,7 @@ class SISController extends BaseController
     public function addStudent($data): array
     {
         $data['admission_date'] = date('Y-m-d');
-        $data['password'] = 'student@123'; // Default password, should be changed later
+        $data['password'] = password_hash('student@123', PASSWORD_DEFAULT); // Default password, should be changed later
         if ($this->studentsModel->insert($data)) {
             return ['message' => 'Student added successfully'];
         }
