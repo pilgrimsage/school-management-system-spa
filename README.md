@@ -13,25 +13,25 @@ portals.
   route except an explicit skip-list (login, pre-login, forgot-password,
   privacy-policy, public fee receipts)
 
-## ⚠️ Known weak point: the custom JS router
+## The custom JS router
 
 There is **no client-side routing library** in this project. Navigation
-inside the logged-in portals is a hand-rolled AJAX router, implemented as
-inline `<script>` blocks duplicated almost 1:1 in two view files:
+inside the logged-in portals is a hand-rolled AJAX router: `public/assets/js/spa-router.js`
+exposes `window.SPARouter.init(options)`, and both portal shells
 
 - `app/Views/portal/post-login-employee.php`
 - `app/Views/portal/post-login-student.php`
 
-Each file defines its own `navigateTo()`, `AppState`, `pluginConfigs`,
-`window.onpopstate`, and Capacitor (mobile) back-button handling — copy-pasted
-rather than shared. **This is the most fragile part of the app and the most
-common source of "the page didn't load" / "back button doesn't work" /
-"double navigation" bugs.** If you're debugging a navigation issue, start
-here, not in the PHP controllers.
+call it with their own routes/plugin/customConfig data. This used to be
+~1000 lines of `navigateTo()`/`AppState`/plugin-lifecycle/history-handling
+code duplicated almost 1:1 in both files — a fix applied to one copy quietly
+stayed broken in the other. That duplication is gone now; **if you're
+debugging a navigation issue, start in `spa-router.js`**, not in the two
+much smaller portal views (which are now just per-portal configuration) or
+the PHP controllers.
 
-Known failure modes that have already bitten this router (fixed so far, but
-the underlying duplication means new copies of the same bug can still creep
-into one file and not the other):
+Failure modes this router has already had (all fixed, all worth knowing
+about since the pattern can recur):
 
 - Browser back button doing nothing on the very first press (the initial
   page load never wrote a `history.pushState`/`replaceState` entry, so the
@@ -40,29 +40,35 @@ into one file and not the other):
   request was still in flight (the queued-navigation dequeue code existed
   but was commented out).
 - The mobile hardware back button firing twice (Capacitor's `backButton`
-  listener was registered in two separate `DOMContentLoaded` blocks in the
-  same file).
+  listener registered in two separate `DOMContentLoaded` blocks).
+- A stray `document.addEventListener("backbutton", ...)` registered *inside*
+  a chart-rendering function, so a new listener piled up every time that
+  chart's route loaded, without ever being removed.
 
-**If you're picking up router work next:** the real fix is to extract the
-router (`navigateTo`, `AppState`, plugin lifecycle, history handling) into a
-single shared JS asset under `public/assets/js/` that both portal shells
-include, instead of maintaining two copies. Until that refactor happens,
-any router fix must be applied to **both** `post-login-employee.php` and
-`post-login-student.php`, or the two portals will drift further apart.
+If you add a new page fragment that needs `navigateTo(...)` as a global
+(some do, e.g. `exam-details.php`, `employee-details.js`), it's exposed on
+`window` from inside `SPARouter.init()` — see the comment above its
+definition in `spa-router.js`.
 
-## Setup
+## Setup (clone and run locally)
 
-Copy `env` to `.env` and set at minimum:
-
-- `app.baseURL`
-- `database.default.*` (hostname, database, username, password)
-- `JWT_SECRET` (required — `JWTAuthFilter` decodes every authenticated
-  request with this; there is no fallback)
+1. `composer install`
+2. Copy `env` to `.env` and set at minimum:
+   - `app.baseURL`
+   - `database.default.*` (hostname, database, username, password) — point
+     it at an empty local MySQL/MariaDB database you've created, e.g.
+     `CREATE DATABASE school_management_system;`
+   - `JWT_SECRET` (required — `JWTAuthFilter` decodes every authenticated
+     request with this; there is no fallback). Generate one with
+     `php -r "echo bin2hex(random_bytes(32));"`
+3. `php spark migrate`
+4. `php spark db:seed DatabaseSeeder`
+5. `php spark serve` and log in with one of the demo accounts below
 
 `index.php` lives in `public/`, not the project root — point your web
 server's document root at `public/`.
 
-### Database / migrations
+### Database / migrations / seeders
 
 `app/Database/Migrations` previously had no migrations at all even though
 the production database has 39 tables — the schema only existed in the
@@ -72,10 +78,26 @@ from a production dump, so a fresh environment can be provisioned with:
 
 ```
 php spark migrate
+php spark db:seed DatabaseSeeder
 ```
 
 Add any further schema changes as new migrations on top of that baseline —
 don't edit it in place.
+
+`DatabaseSeeder` (`app/Database/Seeds/`) loads baseline lookup data (roles,
+the admin "tools" tiles + role permissions, a couple of classes/sections/
+subjects) plus four **fake, non-PII demo accounts** so you can actually log
+in locally after a fresh clone:
+
+| Login                    | Role       | Password       |
+|---------------------------|------------|----------------|
+| `admin@example.test`      | Admin      | `DemoPass!123` |
+| `teacher@example.test`    | Teacher    | `DemoPass!123` |
+| `accountant@example.test` | Accountant | `DemoPass!123` |
+| `student@example.test`    | Student    | `DemoPass!123` |
+
+Never run `DatabaseSeeder`/`DemoUsersSeeder` against production — it creates
+these accounts with a published password.
 
 ### Auth notes
 
@@ -86,6 +108,39 @@ don't edit it in place.
 - Every route is behind the global `jwt` filter except the explicit
   skip-list in `JWTAuthFilter`. If you add a new route that should be
   public, add its first URI segment there rather than disabling the filter.
+
+## Running the test suite
+
+```
+vendor/bin/phpunit
+```
+
+`tests/unit/` runs without a database. `tests/database/` (e.g.
+`AuthLoginTest`, which logs in as each seeded demo account through the real
+`/api/login` route) needs a **separate** MySQL/MariaDB database, because the
+schema migration uses MySQL-specific DDL that CodeIgniter's SQLite3 test
+default can't run:
+
+```sql
+CREATE DATABASE school_management_system_test;
+```
+
+Then set in `.env` (see the commented block in `env` for the full copy —
+note `database.tests.DBPrefix` is deliberately left **empty**, since
+CodeIgniter's own default of `db_` for the tests group doesn't work against
+raw-SQL migrations like this project's):
+
+```
+database.tests.hostname = 127.0.0.1
+database.tests.database = school_management_system_test
+database.tests.username = root
+database.tests.password =
+database.tests.DBDriver = MySQLi
+database.tests.DBPrefix =
+```
+
+`AuthLoginTest` migrates and seeds this database automatically on each run
+(`DatabaseTestTrait`) — it's disposable, drop and recreate it any time.
 
 ## Server requirements
 
