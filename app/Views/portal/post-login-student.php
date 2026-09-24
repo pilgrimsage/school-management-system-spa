@@ -258,7 +258,7 @@
 
                 if (AppState.navigationQueue.length) {
                     const next = AppState.navigationQueue.shift();
-                    // setTimeout(() => navigateTo(next.route, next.push), 100);
+                    setTimeout(() => navigateTo(next.route, next.push), 0);
                 }
             }
         });
@@ -1075,6 +1075,9 @@
     // =========================== INITIALIZATION ===========================
     $(document).ready(function () {
 
+        // Record the initial route in history state so the first back-press
+        // (popstate with no/void state) has somewhere valid to return to.
+        history.replaceState({ route: restOfBaseUrl }, "", window.location.href);
         navigateTo(restOfBaseUrl, false);
 
         // Inactivity timer (10 mins)
@@ -1110,9 +1113,8 @@
 
     // =========================== HISTORY HANDLING ===========================
     window.onpopstate = function (event) {
-        if (event.state && event.state.route !== undefined) {
-            navigateTo(event.state.route, false);
-        }
+        const route = (event.state && event.state.route !== undefined) ? event.state.route : restOfBaseUrl;
+        navigateTo(route, false);
     };
 
     // =========================== VISIBILITY ===========================
@@ -1130,53 +1132,6 @@
 </script>
 
 <!-- Capacitor Back Button Handler (for mobile app) -->
-<script>
-    document.addEventListener('DOMContentLoaded', async () => {
-
-        if (!window.Capacitor) return;
-
-        const {
-            App
-        } = await import('@capacitor/app');
-
-        let lastBack = 0;
-
-        App.addListener('backButton', () => {
-
-            // SPA navigation available → go back in history
-            if (window.history.length > 1) {
-                window.history.back();
-                return;
-            }
-
-            // Home screen → double back to exit
-            const now = Date.now();
-
-            if (now - lastBack < 2000) {
-                App.exitApp();
-            } else {
-                lastBack = now;
-                showToast('Press back again to exit');
-            }
-
-        });
-
-        async function showToast(msg) {
-            try {
-                const {
-                    Toast
-                } = await import('@capacitor/toast');
-                Toast.show({
-                    text: msg,
-                    duration: 'short'
-                });
-            } catch (e) {
-                console.log(msg);
-            }
-        }
-
-    });
-</script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
 
