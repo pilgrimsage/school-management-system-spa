@@ -58,11 +58,16 @@ class SyllabusModuleController extends BaseController
     }
 
     public function syllabusDetails($id) {
+        $syllabusDetails = $this->syllabusManagementController->getOneSyllabus($id);
+
+        if (isset($syllabusDetails['error'])) {
+            return redirect()->to('post-login-employee/academic/syllabus-list')->with('error', $syllabusDetails['error']);
+        }
+
         $classesData = $this->classesController->getAll();
         $sectionList = $this->sectionsController->getAll();
         $employeeList = $this->classTeacherManagementController->getAllEmployees();
         $subjectsData = $this->subjectsController->getAll();
-        $syllabusDetails = $this->syllabusManagementController->getOneSyllabus($id);
         $passToView = [
             'classes' => $classesData,
             'sections' => $sectionList,

@@ -50,7 +50,7 @@ class EmployeeModuleController extends BaseController
         $employeeData = $this->employeeManagementController->getEmployeeDetails($employeeId);
         
         if (!$employeeData) {
-            return redirect()->to('employee/list')->with('error', 'Employee not found');
+            return redirect()->to('post-login-employee/employee/list')->with('error', 'Employee not found');
         }
         
         $roleDetails = $this->adminRoleManagementController->getOne($employeeData['employee']['role_id']);

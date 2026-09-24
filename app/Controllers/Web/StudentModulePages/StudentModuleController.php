@@ -31,7 +31,7 @@ class StudentModuleController extends BaseController
     public function profile(): string|ResponseInterface
     {
         if (!isset($this->request->user->id)) {
-            return redirect()->to('/student/login');
+            return redirect()->to('/pre-login');
         }
 
         $studentId = (int) $this->request->user->id;
@@ -40,7 +40,7 @@ class StudentModuleController extends BaseController
         $studentData = $this->studentsController->getStudentById($studentId);
 
         if (empty($studentData)) {
-            return redirect()->to('/student/login');
+            return redirect()->to('/pre-login');
         }
 
         // ── Attendance ────────────────────────────────────────────────────
@@ -93,7 +93,7 @@ class StudentModuleController extends BaseController
         $studentData = $this->studentsController->getStudentById($studentId);
 
         if (empty($studentData)) {
-            return redirect()->to('/student/login');
+            return redirect()->to('/pre-login');
         }
 
         // ── Attendance ────────────────────────────────────────────────────
@@ -142,7 +142,7 @@ class StudentModuleController extends BaseController
     public function attendance(): string|ResponseInterface
     {
         if (!isset($this->request->user->id)) {
-            return redirect()->to('/student/login');
+            return redirect()->to('/pre-login');
         }
 
         $studentId = (int) $this->request->user->id;
@@ -165,7 +165,7 @@ class StudentModuleController extends BaseController
     public function document_list(): string
     {
         if (!isset($this->request->user->id)) {
-            return redirect()->to('/student/login');
+            return redirect()->to('/pre-login');
         }
 
         $studentId = (int) $this->request->user->id;
@@ -196,7 +196,7 @@ class StudentModuleController extends BaseController
     public function assignments(): string|ResponseInterface
     {
         if (!isset($this->request->user->id)) {
-            return redirect()->to('/student/login');
+            return redirect()->to('/pre-login');
         }
 
         $studentId = (int) $this->request->user->id;
@@ -229,7 +229,7 @@ class StudentModuleController extends BaseController
     public function assignment($assignmentId)
     {
         if (!isset($this->request->user->id)) {
-            return redirect()->to('/student/login');
+            return redirect()->to('/pre-login');
         }
 
         $studentId = (int) $this->request->user->id;
@@ -238,7 +238,7 @@ class StudentModuleController extends BaseController
             ->getAssignmentDetails($assignmentId, $studentId);
 
         if (!$assignment) {
-            return redirect()->to('assignments');
+            return redirect()->to('post-login-student/assignments');
         }
 
         return view('templates/header-student')
@@ -258,7 +258,7 @@ class StudentModuleController extends BaseController
     public function subjects(): string|ResponseInterface
     {
         if (!isset($this->request->user->id)) {
-            return redirect()->to('/student/login');
+            return redirect()->to('/pre-login');
         }
 
         $studentId = (int) $this->request->user->id;
@@ -282,7 +282,7 @@ class StudentModuleController extends BaseController
     public function fees(): string|ResponseInterface
     {
         if (!isset($this->request->user->id)) {
-            return redirect()->to('/student/login');
+            return redirect()->to('/pre-login');
         }
 
         $studentId = (int)$this->request->user->id;
@@ -328,7 +328,7 @@ class StudentModuleController extends BaseController
     public function marksheet($examId)
     {
         if (!isset($this->request->user->id)) {
-            return redirect()->to('/student/login');
+            return redirect()->to('/pre-login');
         }
 
         $studentId = (int)$this->request->user->id;
@@ -338,7 +338,7 @@ class StudentModuleController extends BaseController
         $marksByExam = $this->studentsController->getStudentMarksByExam($studentId);
 
         if (!isset($marksByExam[$examId])) {
-            return redirect()->to('/student/report-cards');
+            return redirect()->to('post-login-student/marksheets');
         }
 
         $exam = $marksByExam[$examId];
@@ -366,7 +366,7 @@ class StudentModuleController extends BaseController
     public function schedule(): string|ResponseInterface
     {
         if (!isset($this->request->user->id)) {
-            return redirect()->to('/student/login');
+            return redirect()->to('/pre-login');
         }
 
         $studentId = (int) $this->request->user->id;
